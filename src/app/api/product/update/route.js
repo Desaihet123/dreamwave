@@ -1,17 +1,39 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// PATCH /api/product/update
-export async function PATCH(req) {
+export async function PUT(req) {
   try {
     const body = await req.json();
-    const { id, name, sku, uom, categoryId } = body;
+    const { id, name, sku, uom, category } = body;
 
     if (!id) {
       return NextResponse.json(
-        { error: "Product ID is required" },
+        { message: "Product ID is required" },
         { status: 400 }
       );
+    }
+
+    let categoryId = undefined;
+    if (category !== undefined) {
+      if (category && category.trim()) {
+        const categoryObj = await prisma.category.findFirst({
+          where: {
+            name: {
+              equals: category.trim(),
+              mode: "insensitive",
+            },
+          },
+        });
+
+        if (categoryObj) {
+          categoryId = categoryObj.id;
+        } else {
+          const newCategory = await prisma.category.create({
+            data: { name: category.trim() },
+          });
+          categoryId = newCategory.id;
+        }
+      }
     }
 
     const updatedProduct = await prisma.product.update({
@@ -20,7 +42,10 @@ export async function PATCH(req) {
         ...(name && { name }),
         ...(sku && { sku }),
         ...(uom && { uom }),
-        ...(categoryId && { categoryId: Number(categoryId) }),
+        ...(categoryId !== undefined && { categoryId }),
+      },
+      include: {
+        category: true,
       },
     });
 
@@ -31,7 +56,7 @@ export async function PATCH(req) {
   } catch (error) {
     console.error("Update Product Error:", error);
     return NextResponse.json(
-      { error: error.message || "Something went wrong" },
+      { message: error.message || "Something went wrong" },
       { status: 500 }
     );
   }

@@ -1,32 +1,77 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// POST /api/product/add
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { name, sku, uom, categoryId, initialStock, warehouseId } = body;
+    const { name, sku, uom, category, quantity, warehouseId } = body;
 
-    // Validation
-    if (!name || !sku || !uom || !categoryId) {
+    if (!name || !sku || !uom) {
       return NextResponse.json(
-        { error: "name, sku, uom, categoryId are required" },
+        { message: "Name, SKU, and Unit of Measure are required" },
         { status: 400 }
       );
     }
 
-    // 1️⃣ Create product
+    const existingSku = await prisma.product.findUnique({
+      where: { sku },
+    });
+
+    if (existingSku) {
+      return NextResponse.json(
+        { message: "SKU already exists" },
+        { status: 400 }
+      );
+    }
+
+    let categoryId = null;
+    if (category && category.trim()) {
+      const categoryObj = await prisma.category.findFirst({
+        where: {
+          name: {
+            equals: category.trim(),
+            mode: "insensitive",
+          },
+        },
+      });
+
+      if (categoryObj) {
+        categoryId = categoryObj.id;
+      } else {
+        const newCategory = await prisma.category.create({
+          data: { name: category.trim() },
+        });
+        categoryId = newCategory.id;
+      }
+    } else {
+      const defaultCategory = await prisma.category.findFirst({
+        where: { name: "Uncategorized" },
+      });
+
+      if (defaultCategory) {
+        categoryId = defaultCategory.id;
+      } else {
+        const newCategory = await prisma.category.create({
+          data: { name: "Uncategorized" },
+        });
+        categoryId = newCategory.id;
+      }
+    }
+
     const product = await prisma.product.create({
       data: {
         name,
         sku,
         uom,
-        categoryId: Number(categoryId),
+        categoryId,
+      },
+      include: {
+        category: true,
+        stocks: true,
       },
     });
 
-    // 2️⃣ Optional initial stock
-    if (initialStock && warehouseId) {
+    if (quantity && quantity > 0 && warehouseId) {
       await prisma.stock.upsert({
         where: {
           productId_warehouseId: {
@@ -35,12 +80,12 @@ export async function POST(req) {
           },
         },
         update: {
-          quantity: { increment: Number(initialStock) },
+          quantity: Number(quantity),
         },
         create: {
           productId: product.id,
           warehouseId: Number(warehouseId),
-          quantity: Number(initialStock),
+          quantity: Number(quantity),
         },
       });
     }
@@ -52,7 +97,7 @@ export async function POST(req) {
   } catch (error) {
     console.error("Add Product Error:", error);
     return NextResponse.json(
-      { error: error.message || "Something went wrong" },
+      { message: error.message || "Something went wrong" },
       { status: 500 }
     );
   }
