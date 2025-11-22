@@ -107,7 +107,7 @@ const Page = () => {
     name: "",
     email: "",
     password: "",
-    role: "MANAGER",
+    role: "manager",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -136,7 +136,7 @@ const Page = () => {
         name: "",
         email: "",
         password: "",
-        role: "MANAGER",
+        role: "manager",
       });
     } catch (error) {
       const message =
@@ -217,8 +217,8 @@ const Page = () => {
                 onChange={handleChange}
                 className="w-full bg-[#24253A] border border-gray-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-[#b976ff] outline-none"
               >
-                <option value="MANAGER">Manager</option>
-                <option value="WORKER">Worker</option>
+                <option value="manager">Manager - Full Access</option>
+                <option value="staff">Staff - Limited Access</option>
               </select>
             </div>
             {error && (

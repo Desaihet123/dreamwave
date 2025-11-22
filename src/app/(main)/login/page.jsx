@@ -28,10 +28,10 @@ const Page = () => {
     setLoading(true);
 
     try {
-      await axios.post("/api/login", form);
+      const response = await axios.post("/api/login", form);
       setSuccess(true);
       setTimeout(() => {
-        router.push("/");
+        router.push("/dashboard");
       }, 1200);
       setForm({
         email: "",

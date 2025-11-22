@@ -1,34 +1,70 @@
 // src/components/Navbar.jsx   (or Sidebar.jsx)
 "use client"
-import React from "react";
-import { usePathname } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  LayoutDashboard, 
-  Package, 
-  ArrowDownToLine, 
-  ArrowUpFromLine, 
-  Shuffle, 
-  ClipboardList, 
-  History, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Package,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Shuffle,
+  ClipboardList,
+  History,
+  Settings,
   Warehouse,
-  User, 
-  LogOut 
+  User,
+  LogOut
 } from "lucide-react";
 
 const Navbar = () => {
   const pathname = usePathname();
+  const router = useRouter();
+  const [userRole, setUserRole] = useState(null);
+  const [userName, setUserName] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    try {
+      const cookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('mylogintoken='));
+
+      if (cookie) {
+        const tokenData = JSON.parse(decodeURIComponent(cookie.split('=')[1]));
+        setUserRole(tokenData.role);
+      }
+    } catch (error) {
+      console.error('Error parsing auth cookie:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const isActive = (path) => pathname.startsWith(path);
+
+  const handleLogout = () => {
+    document.cookie = 'mylogintoken=; Max-Age=0; path=/;';
+    router.push('/login');
+  };
+
+  const isPublicPath = pathname === '/login' || pathname === '/register';
+  if (isPublicPath) {
+    return null;
+  }
 
   return (
     <div className="fixed left-0 top-0 h-screen w-64 bg-[#1f2529] text-white flex flex-col">
       {/* Logo */}
       <div className="h-16 flex items-center justify-center border-b border-gray-800">
-        <h1 className="text-2xl font-bold">
-          <span className="text-purple-400">Stock</span>Master
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-center">
+            <span className="text-purple-400">Stock</span>Master
+          </h1>
+          <p className="text-xs text-gray-400 text-center capitalize">
+            {isLoading ? 'Loading...' : userRole}
+          </p>
+        </div>
       </div>
 
       {/* Navigation Menu */}
@@ -46,18 +82,20 @@ const Navbar = () => {
           Dashboard
         </Link>
 
-        {/* Products */}
-        <Link
-          href="/products"
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-            isActive("/products")
-              ? "bg-purple-600 text-white shadow-lg"
-              : "text-gray-300 hover:bg-gray-800 hover:text-white"
-          }`}
-        >
-          <Package className="w-5 h-5" />
-          Products
-        </Link>
+        {/* Products - Manager Only */}
+        {userRole === 'manager' && (
+          <Link
+            href="/product"
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+              isActive("/product")
+                ? "bg-purple-600 text-white shadow-lg"
+                : "text-gray-300 hover:bg-gray-800 hover:text-white"
+            }`}
+          >
+            <Package className="w-5 h-5" />
+            Products
+          </Link>
+        )}
 
         {/* Operations Group */}
         <div className="pt-4">
@@ -66,6 +104,7 @@ const Navbar = () => {
             Operations
           </div>
 
+          {/* Receipts - Available to all users */}
           <Link
             href="/receipts"
             className={`flex items-center gap-3 px-10 py-2.5 rounded-lg text-sm transition-all ${
@@ -152,7 +191,10 @@ const Navbar = () => {
           My Profile
         </Link>
 
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-gray-300 hover:bg-red-900/40 hover:text-red-400 transition-all">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-gray-300 hover:bg-red-900/40 hover:text-red-400 transition-all"
+        >
           <LogOut className="w-5 h-5" />
           Logout
         </button>
